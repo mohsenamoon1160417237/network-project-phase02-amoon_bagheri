@@ -72,16 +72,7 @@ class FTPHandler:
         while True:
             if not self.hand_shake:
                 client_socket, client_address = self.server_socket.accept()
-            request = ''
-            counter = 0
-            while counter != 3:
-                request = client_socket.recv(1048576)
-                request += request
-                time.sleep(1)
-                print(counter)
-                print(len(request))
-                counter += 1
-            print(len(request))
+            request = client_socket.recv(1048576)
             if self.hand_shake:
                 self.receive_file(request, client_socket)
             else:
