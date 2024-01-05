@@ -2,7 +2,7 @@ import socket
 import os
 
 HOST = "localhost"  # The server's hostname or IP address
-PORT = 8083  # The port used by the server
+PORT = 8085  # The port used by the server
 hand_shake = False
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((HOST, PORT))
@@ -38,7 +38,13 @@ while 1:
         fo = open(user_input.split(" ")[1], "rb")
         f = fo.read()
         fo.close()
-        s.sendall(f)
+        chunk_size = 1000
+        file_chunks = [f[x:x + chunk_size] for x in range(0, len(f), chunk_size)]
+        for chunk in file_chunks:
+            s.sendall(chunk)
+            data = s.recv(8192).decode()
+            if data == 'send_next_chunk':
+                continue
         data = s.recv(8192).decode()
     if data == "OK2" and hand_shake:
         hand_shake = False

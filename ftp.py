@@ -5,7 +5,7 @@ import socket
 import threading
 
 users = [
-    {"username": "user1", "password": "123456"}
+    {"username": "user1", "password": "1"}
 ]
 
 hand_shakes = {}
@@ -45,7 +45,7 @@ class FTPHandler:
         self.server_socket = serv_socket
         self.thread_manager = thread_manager
         host = 'localhost'
-        port = 8083
+        port = 8085
         server_socket.bind((host, port))
         server_socket.listen(1)
         print(f"Server is listening on http://{host}:{port}")
@@ -111,8 +111,19 @@ class FTPHandler:
 
     @authentication_required
     def receive_file(self, file: bytes, client_socket: socket, thread_id: int):
+        mega_bytes_counter = 0
+        total_file = b''
+        while len(file) == 1000:
+            if len(total_file) % 1000000 == 0:
+                mega_bytes_counter += 1
+                print(mega_bytes_counter)
+            total_file += file
+            client_socket.send("send_next_chunk".encode())
+            file = client_socket.recv(4096)
+        total_file += file
+        client_socket.send("finished".encode())
         fw = open(store_paths[thread_id], "wb")
-        fw.write(file)
+        fw.write(total_file)
         fw.close()
         hand_shakes[thread_id] = False
         store_paths[thread_id] = ''
