@@ -55,6 +55,13 @@ while 1:
             fw.write(data)
             fw.close()
             continue
+        
+    if user_input[:6] == "REPORT":
+        s.sendall(user_input.encode())
+        logs = s.recv(4096).decode()
+        print(logs)
+        continue
+    
     if user_input[:4] == "QUIT":
         s.sendall(user_input.encode())
         response = s.recv(4096).decode()
