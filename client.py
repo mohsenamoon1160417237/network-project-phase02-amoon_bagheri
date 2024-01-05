@@ -54,6 +54,7 @@ while 1:
             fw = open(os.path.join(os.getcwd(), file_name), "w")
             fw.write(data)
             fw.close()
+            continue
     if user_input[:4] == "QUIT":
         s.sendall(user_input.encode())
         response = s.recv(4096).decode()

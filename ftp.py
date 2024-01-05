@@ -1,3 +1,4 @@
+from typing import Union
 import datetime
 import os
 import shutil
@@ -20,6 +21,8 @@ def authentication_required(function):
         if authentication.get(args[3]):  # self.authenticated
             if authentication.get(args[3]).get('authenticated'):
                 function(*args, **kwargs)
+            else:
+                args[2].sendall("Authentication not provided".encode())  # client_socket
         else:
             args[2].sendall("Authentication not provided".encode())  # client_socket
 
@@ -110,17 +113,22 @@ class FTPHandler:
             client_socket.sendall('Invalid file path'.encode())
 
     @authentication_required
-    def receive_file(self, file: bytes, client_socket: socket, thread_id: int):
+    def receive_file(self, request: Union[str, bytes], client_socket: socket, thread_id: int):
+        if not hand_shakes.get(thread_id):
+            store_paths[thread_id] = request.split(" ")[2].strip()
+            client_socket.send("OK1".encode())
+            hand_shakes[thread_id] = True
+            return
         mega_bytes_counter = 0
         total_file = b''
-        while len(file) == 1000:
+        while len(request) == 1000:
             if len(total_file) % 1000000 == 0:
                 mega_bytes_counter += 1
                 print(mega_bytes_counter)
-            total_file += file
+            total_file += request
             client_socket.send("send_next_chunk".encode())
-            file = client_socket.recv(4096)
-        total_file += file
+            request = client_socket.recv(4096)
+        total_file += request
         client_socket.send("finished".encode())
         fw = open(store_paths[thread_id], "wb")
         fw.write(total_file)
@@ -202,10 +210,7 @@ class FTPHandler:
             elif request[:4] == "RETR":
                 self.send_file(request.split(" ")[1].strip(), client_socket, thread_id)
             elif request[:4] == "STOR":
-                if not hand_shakes.get(thread_id):
-                    store_paths[thread_id] = request.split(" ")[2].strip()
-                    client_socket.send("OK1".encode())
-                    hand_shakes[thread_id] = True
+                self.receive_file(request, client_socket, thread_id)
             elif request[:4] == "DELE":
                 file_path = request.split(" ")[1].strip()
                 self.delete_file(file_path, client_socket, thread_id)
