@@ -62,14 +62,16 @@ class FTPHandler:
                 client_socket.sendall("Retrieved username".encode())
                 return
         client_socket.send("User name not found".encode())
-    
-    def log_command(self, command, client_socket, thread_id):
+
+    @staticmethod
+    def log_command(command, client_socket, thread_id):
+        user_name = authentication.get(thread_id, {}).get('username')
         log_entry = {
             'timestamp': datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'username': authentication.get(thread_id, {}).get('username', 'Unknown'),
+            'username': user_name,
             'command': command
         }
-        with open('ftp_server_log.json', 'a') as log_file:
+        with open(f'{os.getcwd()}/log_{user_name}', 'a') as log_file:
             json.dump(log_entry, log_file)
             log_file.write('\n')
 
@@ -89,8 +91,8 @@ class FTPHandler:
 
     @authentication_required
     def show_list(self, path_name: str, client_socket: socket, thread_id: int) -> None:
-        self.log_command(f"LIST {path_name}", client_socket, thread_id)
         base_path = os.getcwd() if path_name is None else path_name
+        self.log_command(f"LIST {path_name if path_name is not None else ''}", client_socket, thread_id)
         is_file = os.path.isfile(base_path)
         if is_file:
             client_socket.sendall(self.show_file_context(base_path))
@@ -127,9 +129,8 @@ class FTPHandler:
 
     @authentication_required
     def receive_file(self, request: Union[str, bytes], client_socket: socket, thread_id: int):
-        file_path = request.split(" ")[2].strip() if isinstance(request, str) else "Unknown"
-        self.log_command(f"STOR {file_path}", client_socket, thread_id)
         if not hand_shakes.get(thread_id):
+            self.log_command(request, client_socket, thread_id)
             store_paths[thread_id] = request.split(" ")[2].strip()
             client_socket.send("OK1".encode())
             hand_shakes[thread_id] = True
@@ -210,13 +211,10 @@ class FTPHandler:
         client_socket.send(f"Changed to parent directory: {pwd}".encode())
 
     @authentication_required
-    def report(self, client_socket: socket, thread_id: int):
-        if not authentication.get(thread_id, {}).get('username') == 'admin':
-            client_socket.sendall("Access Denied".encode())
-            return
-
+    def get_report(self, dummy, client_socket: socket, thread_id: int):
+        user_name = authentication.get(thread_id, {}).get('username')
         try:
-            with open('ftp_server_log.json', 'r') as log_file:
+            with open(f'{os.getcwd()}/log_{user_name}', 'r') as log_file:
                 logs = log_file.readlines()
             client_socket.sendall("".join(logs).encode())
         except Exception as e:
@@ -261,6 +259,8 @@ class FTPHandler:
                 self.change_working_directory(dir_path, client_socket, thread_id)
             elif request[:4] == "CDUP":
                 self.change_to_parent_directory(None, client_socket, thread_id)
+            elif request[:6] == "REPORT":
+                self.get_report(None, client_socket, thread_id)
             elif request[:4] == "QUIT":
                 self.log_command("QUIT", client_socket, thread_id)
                 client_socket.send("Connection closed".encode())
