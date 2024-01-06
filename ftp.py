@@ -56,7 +56,6 @@ class FTPHandler:
 
     @classmethod
     def get_user(cls, user: str, client_socket: socket, thread_id: int):
-        cls.log_command(f"USER {user}", client_socket, thread_id)
         for u in users:
             if u.get('username') == user:
                 authentication[thread_id] = {'username': user}
@@ -76,7 +75,6 @@ class FTPHandler:
 
     @classmethod
     def get_password(cls, password: str, client_socket: socket, thread_id: int):
-        cls.log_command(f"PASS {password}", client_socket, thread_id)
         if authentication.get(thread_id):
             username = authentication[thread_id].get('username')
             for u in users:
